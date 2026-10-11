@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "devsnoop",
   "displayName": "DevSnoop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Use an existing DevSnoop installation to inspect and interact with the user's current Chrome profile through its local bridge.",
   "author": {
     "name": "Hwee-Boon Yar",

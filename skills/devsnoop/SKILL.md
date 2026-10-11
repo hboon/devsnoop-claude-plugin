@@ -33,7 +33,7 @@ curl -sS -X POST http://127.0.0.1:9400/ \
   -d '{"command":"ping","params":{}}'
 ```
 
-Start every workflow with `ping`.
+Check entitlement with `ping` in the intended profile before page commands. When multiple profiles are connected, identify the profile first as described below.
 
 - If `license.activated` is `true`, continue.
 - If `license.activated` is `false` and `preview.active` is `true`, continue until `preview.expiresAt`.
@@ -43,28 +43,53 @@ Start every workflow with `ping`.
 
 ## Select a Chrome profile
 
-For one connected profile, no selection is needed. When multiple profiles are connected, use `list_connections`, then ask the user which profile to use if their request does not make it clear. Select it before running the entitlement `ping`.
+For one connected profile, no selection is needed unless the user requested a particular account. For multiple profiles, call `list_connections` before the entitlement `ping`. Match the user's intended profile by its optional label or known `profileID`; ask if the match is unclear. Labels can be empty or duplicated. Never copy unrelated profile labels, tab lists or page data into a report.
 
 ```json
 { "command": "list_connections", "params": {} }
 ```
 
+The response's `result` includes `selectedConnectionID` and `connections`. Each connection includes `connectionID`, `profileID`, `label` and `selected`, plus connection metadata. Profile IDs are stored in local extension storage; connection IDs can change on reconnect. Use the current returned connection ID, not the profile ID, to send commands.
+
+The IDs and labels in these examples are generic. Replace `native-456-example` with the intended connection's current ID, and `123` with a tab `id` returned by that connection's `list_tabs`.
+
+For account-specific workflows, include a top-level `connectionID` on every request, including entitlement and tab discovery:
+
+```json
+{ "command": "ping", "params": {}, "connectionID": "native-456-example" }
+```
+
+Apply the license and preview checks above to that profile's `ping` response before continuing.
+
+```json
+{ "command": "list_tabs", "params": {}, "connectionID": "native-456-example" }
+```
+
+```json
+{
+  "command": "page_summary",
+  "params": {},
+  "connectionID": "native-456-example",
+  "tabID": 123
+}
+```
+
+Confirm that the summary matches the intended account and page before an interaction. Keep both IDs on subsequent page commands. Omitting `tabID` uses that profile's active tab.
+
+To change the default for commands that omit `connectionID`:
+
 ```json
 {
   "command": "select_connection",
-  "params": { "connectionID": "native-123-example" }
+  "params": { "connectionID": "native-456-example" }
 }
 ```
 
-To target one request without changing the default, put `connectionID` at the top level beside `command`, `params`, and `tabID`.
+This default is shared by callers using the broker and held in memory. Broker restarts reset it. Per-request targeting overrides it without changing it. If the default connection disappears, untargeted commands can use another available connection. A stale per-request connection ID returns an error instead of falling back. List connections again and confirm the intended profile after a disconnect; do not blindly retry an action whose outcome is unknown.
 
-```json
-{
-  "command": "list_tabs",
-  "params": {},
-  "connectionID": "native-123-example"
-}
-```
+Profile selection does not grant page access. If an origin permission is needed, ask the user to grant it in that profile's popup. Labels are stored locally and shown to local callers; they do not restrict access. Chrome can show a debugging banner for debugger-backed commands. The bridge's agent HTTP API has no token requirement: use trusted local callers and do not expose its loopback port to a network.
+
+See the [multi-profile workflow](https://devsnoop.com/coding-agent-multiple-chrome-profiles) for setup and HTTP examples. Preserve the safety and privacy boundaries above.
 
 ## Request format
 

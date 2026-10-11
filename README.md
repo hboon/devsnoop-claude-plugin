@@ -1,6 +1,6 @@
 # DevSnoop plugin for Claude Code
 
-This plugin teaches Claude Code how to use an existing DevSnoop installation to inspect and interact with pages in your current Chrome profile. It contains one skill and no executable code.
+This plugin teaches Claude Code how to use an existing DevSnoop installation to inspect and interact with pages in your current or selected Chrome profile. It contains one skill and no executable code.
 
 DevSnoop is a commercial product made by the author of this plugin. DevSnoop is not made, sponsored, or endorsed by Anthropic, and this repository does not make DevSnoop a first-party Claude integration.
 
@@ -22,6 +22,18 @@ The native host exposes a local HTTP bridge on `127.0.0.1:9400`. DevSnoop works 
 Read the [DevSnoop privacy policy](https://devsnoop.com/privacy) for the product's data handling, license verification, sanitized diagnostics, analytics, and local file retention.
 
 DevSnoop returns command data to the local native host. When Claude Code reads a command response or opens a DevSnoop screenshot, that selected data is processed as part of the user's Claude Code interaction under Anthropic's terms and privacy policy.
+
+## Work and test Chrome profiles
+
+Use DevSnoop to check the account in the Chrome profile you intend. Install the extension in each profile, then give each one a distinct **Agent profile label** in its popup, such as Work or Test account (generic examples). Keep the profiles connected. Each profile needs an active preview or license and its own site-origin grants.
+
+Ask Claude Code:
+
+> Use DevSnoop to list connected profiles. Use the profile labeled Test account to inspect the requested test page. Include its connectionID on every command, check ping, then list its tabs and use the matching tabID. Ask me if the profile or tab is unclear. Do not inspect unrelated tabs or storage.
+
+`list_connections` returns labels, local `profileID` values and current `connectionID` values. `select_connection` changes the broker's shared default. For account-specific work, a top-level `connectionID` on every request avoids relying on that default. Connection IDs can change on reconnect; if a target disappears, list connections again and confirm it before continuing.
+
+See the [multi-profile workflow](https://devsnoop.com/coding-agent-multiple-chrome-profiles) for HTTP examples, default fallback behavior and permissions. DevSnoop uses existing profiles; it does not create an isolated browser. Labels help choose a profile and are not access restrictions.
 
 ## Example prompts
 
