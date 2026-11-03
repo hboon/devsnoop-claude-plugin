@@ -298,8 +298,25 @@ Returns: `{logs: [{level, text, url, line, timestamp}], exceptions: [{text, desc
 }
 ```
 
-Params: `status`, `type`, `urlPattern`, `errorsOnly`, and `limit`, all optional. Body capture is off by default. `includeRequestBody` and `includeResponseBody` opt in to bodies; `bodyMaxBytes` defaults to and is capped at 20,000; `redactBody` defaults to true; and `redactKeys` adds key substrings to redact.
-Returns: `{requests: [{method, url, status, type, duration, size, error, requestBody, responseBody}]}`. Do not disable body redaction unless the user explicitly requests it and the task requires the unredacted data.
+Params: `status`, `type`, `urlPattern`, `errorsOnly`, and `limit`, all optional.
+
+Body options apply when reading buffered requests:
+
+| Option                | Default and behavior                                                                                                                                                  |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `includeRequestBody`  | `false`; opt in to reading request bodies.                                                                                                                            |
+| `includeResponseBody` | `false`; opt in to reading response bodies.                                                                                                                           |
+| `bodyMaxBytes`        | Defaults to and is capped at 20,000. Positive finite values are rounded down; values below 1 or non-finite values use the default.                                    |
+| `redactBody`          | `true`; redacts supported text body formats.                                                                                                                          |
+| `redactKeys`          | Replaces the default key substrings. An empty array disables key redaction. Defaults include `authorization`, `cookie`, `password`, `secret`, `session`, and `token`. |
+
+Returns: `{requests: [{method, url, status, type, duration, size, error, requestBody?, responseBody?, requestBodyError?, responseBodyError?}]}`. Bodies contain `{text, base64Encoded?, truncated, originalBytes}`. `originalBytes` counts UTF-8 bytes after redaction and before trimming, including encoded text for base64 bodies.
+
+Unavailable bodies return a body error; unfinished requests return `responseBodyError` when a response body is requested. Chrome may no longer retain a body even when its metadata is buffered.
+
+Keep body options off unless the task needs the content. Returned bodies can contain credentials or personal data and can enter Claude Code's conversation. Redaction can miss sensitive content, skips base64-encoded bodies, and does not sanitize URLs or metadata.
+
+Do not disable body redaction unless the user explicitly requests it and the task requires the unredacted data. Custom `redactKeys` must retain any default protections you need.
 
 ### Change detection
 
@@ -336,9 +353,10 @@ Do not ask for access to every site. A grant for one origin does not authorize i
 
 1. Run `ping`, then `list_tabs` and identify the requested checkout tab.
 2. Run `page_summary` with its `tabID` and find the checkout button.
-3. Call `click` using the returned selector or the exact visible label.
-4. Run `get_logs` with `level: "error"`, `get_network` with `errorsOnly: true`, and `diff` or another `page_summary`.
-5. Report the clicked selector, visible page change, console exception, and failed request. Do not claim the click succeeded only because the click command returned.
+3. Run `get_logs` with `level: "error"` and `get_network` with `errorsOnly: true` on that tab to start capture. Keep both body options off unless needed. Take a `diff` baseline if comparing DOM changes.
+4. Call `click` using the returned selector or the exact visible label.
+5. Read `get_logs` and `get_network` again on the same tab, then run `diff` or another `page_summary`.
+6. Report the clicked selector, visible page change, console exception, and failed request. Do not claim the click succeeded only because the click command returned.
 
 ### Inspect failures after form submission
 
